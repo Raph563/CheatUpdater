@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.os.Build
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import com.raph563.cheatupdater.data.ApkCandidate
 import com.raph563.cheatupdater.data.GitHubAsset
 import com.raph563.cheatupdater.data.GitHubRelease
@@ -32,10 +34,14 @@ class GitHubReleaseRepository(private val context: Context) {
             }
             .build()
 
+        val moshi = Moshi.Builder()
+            .addLast(KotlinJsonAdapterFactory())
+            .build()
+
         Retrofit.Builder()
             .baseUrl("https://api.github.com/")
             .client(client)
-            .addConverterFactory(MoshiConverterFactory.create())
+            .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
             .create(GitHubApi::class.java)
     }
@@ -47,11 +53,31 @@ class GitHubReleaseRepository(private val context: Context) {
         require(config.owner.isNotBlank()) { "Owner GitHub requis." }
         require(config.repo.isNotBlank()) { "Repo GitHub requis." }
 
-        val releaseDto = api.getLatestRelease(
-            owner = config.owner.trim(),
-            repo = config.repo.trim(),
-            authorization = config.token.toAuthHeader()
-        )
+        val owner = config.owner.trim()
+        val repo = config.repo.trim()
+        val auth = config.token.toAuthHeader()
+        val releaseDto = try {
+            api.getLatestRelease(
+                owner = owner,
+                repo = repo,
+                authorization = auth
+            )
+        } catch (http: HttpException) {
+            if (http.code() == 404) {
+                return UpdateCheckResult(
+                    release = GitHubRelease(
+                        id = 0L,
+                        tagName = "no-release",
+                        name = "$owner/$repo",
+                        publishedAt = null,
+                        assets = emptyList()
+                    ),
+                    candidates = emptyList(),
+                    isNewRelease = false
+                )
+            }
+            throw http
+        }
         val release = releaseDto.toDomain()
         val releaseFolder = File(context.filesDir, "apk_cache/${sanitize(release.tagName)}")
         if (!releaseFolder.exists()) {

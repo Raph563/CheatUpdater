@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.os.Build
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import com.raph563.cheatupdater.data.ApkCandidate
 import com.raph563.cheatupdater.data.GitHubAsset
 import com.raph563.cheatupdater.data.GitHubRelease
@@ -36,10 +38,14 @@ class BackendReleaseRepository(
         .build()
 
     private val api: BackendApi by lazy {
+        val moshi = Moshi.Builder()
+            .addLast(KotlinJsonAdapterFactory())
+            .build()
+
         Retrofit.Builder()
             .baseUrl(normalizedBaseUrl)
             .client(client)
-            .addConverterFactory(MoshiConverterFactory.create())
+            .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
             .create(BackendApi::class.java)
     }

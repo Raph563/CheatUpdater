@@ -31,6 +31,12 @@ object UpdateSources {
             backendBaseUrl = "http://10.0.2.2:8088/"
         ),
         UpdateSource(
+            id = "backend_lan",
+            displayName = "Backend Docker (LAN Wi-Fi)",
+            type = SourceType.BACKEND,
+            backendBaseUrl = "http://192.168.0.56:8088/"
+        ),
+        UpdateSource(
             id = "github_debug",
             displayName = "GitHub Debug (inotia00/rvx-builder)",
             type = SourceType.GITHUB,

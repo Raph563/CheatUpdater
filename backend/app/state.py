@@ -16,8 +16,8 @@ DEFAULT_STATE: dict[str, Any] = {
         },
         "github_publish": {
             "enabled": False,
-            "owner": "",
-            "repo": "",
+            "owner": "Raph563",
+            "repo": "CheatUpdater",
             "token": "",
             "prerelease": False,
         },

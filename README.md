@@ -88,6 +88,50 @@ APK générés:
 
 Pixel 6: utiliser `app-arm64-v8a-*.apk`.
 
+## Etapes de test (rapide)
+
+### 1. Tester le backend RVX
+
+1. Lancer:
+   - `docker compose up -d --build`
+2. Ouvrir:
+   - `http://localhost:8088`
+3. Dans l'UI backend:
+   - `Rafraichir catalogue RVX`
+   - cocher une app (ex: `com.reddit.frontpage`)
+   - `Sauver configuration`
+   - `Forcer patch maintenant`
+4. Attendre un stage `ready`, puis cliquer `Diffuser`.
+5. Vérifier:
+   - `http://localhost:8088/mobile/current` doit retourner un JSON avec `apps`.
+
+### 2. Tester l'app Android (source backend)
+
+1. Installer l'APK debug Pixel 6:
+   - `app/build/outputs/apk/debug/app-arm64-v8a-debug.apk`
+2. Ouvrir l'app, source:
+   - `Backend Docker (LAN Wi-Fi)` pour téléphone physique
+   - `Backend Docker (local)` pour émulateur Android
+3. Cliquer `Sauver source`.
+4. Dans Debug:
+   - `Tester connexion depot`
+   - `Check application fonctionnel`
+5. Cliquer `Check mises a jour` puis installer une app proposée.
+
+### 3. Tester l'app Android (source GitHub du repo)
+
+Source disponible:
+- `GitHub Releases (Raph563/CheatUpdater)`
+
+Important:
+- Tant qu'aucune release GitHub n'est publiée avec des assets `.apk`, le check update ne retournera pas d'APK installable.
+
+Pour un premier test GitHub:
+1. Créer une release dans `https://github.com/Raph563/CheatUpdater/releases/new`
+2. Ajouter au moins un `.apk` en asset
+3. Dans l'app, sélectionner `GitHub Releases (Raph563/CheatUpdater)`
+4. Refaire `Tester connexion depot` puis `Check application fonctionnel`.
+
 ## Broadcast Android (alerte forcée)
 
 ```bash
@@ -95,4 +139,3 @@ adb shell am broadcast \
   -a com.raph563.cheatupdater.ACTION_FORCE_UPDATE \
   --es reason "Mise a jour obligatoire"
 ```
-
