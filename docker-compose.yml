@@ -1,0 +1,30 @@
+services:
+  rvx-builder:
+    container_name: rvx-builder
+    build:
+      context: ./rvx-builder
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./rvx_data:/app/rvx-builder/revanced
+
+  cheatupdater-backend:
+    container_name: cheatupdater-backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - rvx-builder
+    environment:
+      - DATA_DIR=/data
+      - RVX_WS_URL=ws://rvx-builder:8000
+      - RVX_REVANCED_DIR=/srv/rvx/revanced
+      - PUBLIC_BASE_URL=http://localhost:8088
+    ports:
+      - "8088:8088"
+    volumes:
+      - ./backend_data:/data
+      - ./rvx_data:/srv/rvx/revanced

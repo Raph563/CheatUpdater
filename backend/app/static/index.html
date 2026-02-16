@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CheatUpdater RVX Backend</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header>
+    <h1>CheatUpdater RVX Control</h1>
+    <p>Selection apps, patch auto/manuelle, staging, diffusion.</p>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Configuration</h2>
+      <div class="row">
+        <label>
+          <input type="checkbox" id="autoEnabled" />
+          Auto patch a la detection d'un nouveau patch RVX
+        </label>
+      </div>
+      <div class="row grouped">
+        <label>Source patch owner <input type="text" id="patchOwner" /></label>
+        <label>Source patch repo <input type="text" id="patchRepo" /></label>
+      </div>
+      <div class="row grouped">
+        <label>
+          <input type="checkbox" id="ghPublishEnabled" />
+          Publier aussi sur GitHub Releases
+        </label>
+      </div>
+      <div class="row grouped">
+        <label>GitHub owner <input type="text" id="ghOwner" /></label>
+        <label>GitHub repo <input type="text" id="ghRepo" /></label>
+        <label>GitHub token <input type="text" id="ghToken" /></label>
+      </div>
+      <div class="row grouped">
+        <button id="refreshCatalogBtn">Rafraichir catalogue RVX</button>
+        <button id="saveConfigBtn">Sauver configuration</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Apps ciblees</h2>
+      <div id="catalogInfo" class="hint"></div>
+      <div id="catalogList"></div>
+    </section>
+
+    <section class="card">
+      <h2>Actions</h2>
+      <div class="row grouped">
+        <button id="triggerPatchBtn">Forcer patch maintenant</button>
+        <button id="testBackendBtn">Test source backend</button>
+        <button id="testGithubBtn">Test source GitHub debug</button>
+      </div>
+      <pre id="debugOutput"></pre>
+    </section>
+
+    <section class="card">
+      <h2>Stages prets a diffuser</h2>
+      <div id="stagesList"></div>
+    </section>
+
+    <section class="card">
+      <h2>Jobs</h2>
+      <div id="jobsList"></div>
+    </section>
+
+    <section class="card">
+      <h2>Release mobile courante</h2>
+      <pre id="currentRelease"></pre>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

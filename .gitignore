@@ -9,3 +9,8 @@ captures/
 *.keystore
 *.jks
 *.log
+backend_data/
+rvx_data/
+_tmp_rvx_builder/
+backend/__pycache__/
+backend/app/__pycache__/

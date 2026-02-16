@@ -23,6 +23,20 @@ interface GitHubApi {
         @Url downloadUrl: String,
         @Header("Authorization") authorization: String?
     ): Response<ResponseBody>
+
+    @GET("repos/{owner}/{repo}")
+    suspend fun getRepository(
+        @Path("owner") owner: String,
+        @Path("repo") repo: String,
+        @Header("Authorization") authorization: String?
+    ): GitHubRepositoryDto
+
+    @GET("repos/{owner}/{repo}/tags")
+    suspend fun getTags(
+        @Path("owner") owner: String,
+        @Path("repo") repo: String,
+        @Header("Authorization") authorization: String?
+    ): List<GitHubTagDto>
 }
 
 data class GitHubReleaseDto(
@@ -38,4 +52,13 @@ data class GitHubAssetDto(
     @Json(name = "name") val name: String,
     @Json(name = "size") val size: Long,
     @Json(name = "browser_download_url") val browserDownloadUrl: String
+)
+
+data class GitHubRepositoryDto(
+    @Json(name = "full_name") val fullName: String,
+    @Json(name = "default_branch") val defaultBranch: String?
+)
+
+data class GitHubTagDto(
+    @Json(name = "name") val name: String
 )

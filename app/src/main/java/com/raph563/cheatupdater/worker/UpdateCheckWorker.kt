@@ -5,7 +5,8 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.raph563.cheatupdater.data.AppPreferences
 import com.raph563.cheatupdater.data.UpdateAction
-import com.raph563.cheatupdater.network.GitHubReleaseRepository
+import com.raph563.cheatupdater.data.UpdateSources
+import com.raph563.cheatupdater.network.UpdateService
 import com.raph563.cheatupdater.notifier.NotificationHelper
 
 class UpdateCheckWorker(
@@ -15,16 +16,14 @@ class UpdateCheckWorker(
 
     override suspend fun doWork(): Result {
         val prefs = AppPreferences(applicationContext)
-        val config = prefs.loadRepoConfig()
-        if (config.owner.isBlank() || config.repo.isBlank()) {
-            return Result.success()
-        }
+        val sourceId = prefs.getSelectedSourceId()
+        val source = UpdateSources.findById(sourceId) ?: UpdateSources.default()
 
         return runCatching {
-            val repository = GitHubReleaseRepository(applicationContext)
-            val result = repository.checkForUpdates(config, prefs.getLastSeenTag())
+            val updateService = UpdateService(applicationContext)
+            val result = updateService.checkForUpdates(source, prefs.getLastSeenTag(source.id))
             if (result.isNewRelease) {
-                prefs.setLastSeenTag(result.release.tagName)
+                prefs.setLastSeenTag(source.id, result.release.tagName)
             }
             val actionable = result.candidates.count {
                 it.action == UpdateAction.INSTALL || it.action == UpdateAction.UPDATE

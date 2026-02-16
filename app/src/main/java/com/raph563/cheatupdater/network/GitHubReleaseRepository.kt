@@ -11,6 +11,7 @@ import com.raph563.cheatupdater.data.RepoConfig
 import com.raph563.cheatupdater.data.UpdateAction
 import com.raph563.cheatupdater.data.UpdateCheckResult
 import okhttp3.OkHttpClient
+import retrofit2.HttpException
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 import java.io.File
@@ -72,6 +73,39 @@ class GitHubReleaseRepository(private val context: Context) {
             candidates = candidates,
             isNewRelease = lastSeenTag == null || lastSeenTag != release.tagName
         )
+    }
+
+    suspend fun testConnection(config: RepoConfig): String {
+        require(config.owner.isNotBlank()) { "Owner GitHub requis." }
+        require(config.repo.isNotBlank()) { "Repo GitHub requis." }
+        val owner = config.owner.trim()
+        val repo = config.repo.trim()
+        val auth = config.token.toAuthHeader()
+
+        return try {
+            val releaseDto = api.getLatestRelease(
+                owner = owner,
+                repo = repo,
+                authorization = auth
+            )
+            "Connexion GitHub OK: release ${releaseDto.tagName}"
+        } catch (http: HttpException) {
+            if (http.code() != 404) throw http
+            val repository = api.getRepository(
+                owner = owner,
+                repo = repo,
+                authorization = auth
+            )
+            val tags = runCatching {
+                api.getTags(owner = owner, repo = repo, authorization = auth)
+            }.getOrDefault(emptyList())
+            val latestTag = tags.firstOrNull()?.name
+            if (latestTag.isNullOrBlank()) {
+                "Connexion GitHub OK: ${repository.fullName} (aucune release publiee)"
+            } else {
+                "Connexion GitHub OK: ${repository.fullName} (dernier tag: $latestTag)"
+            }
+        }
     }
 
     private fun buildCandidate(asset: GitHubAsset, localFile: File): ApkCandidate {

@@ -7,9 +7,10 @@ import android.os.Build
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.raph563.cheatupdater.data.AppPreferences
-import com.raph563.cheatupdater.data.RepoConfig
 import com.raph563.cheatupdater.data.UpdateAction
-import com.raph563.cheatupdater.network.GitHubReleaseRepository
+import com.raph563.cheatupdater.data.UpdateSource
+import com.raph563.cheatupdater.data.UpdateSources
+import com.raph563.cheatupdater.network.UpdateService
 import com.raph563.cheatupdater.notifier.NotificationHelper
 import com.raph563.cheatupdater.updater.ApkInstaller
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -32,11 +33,14 @@ data class CandidateUi(
 )
 
 data class MainUiState(
-    val owner: String = "",
-    val repo: String = "",
-    val token: String = "",
+    val availableSources: List<UpdateSource> = UpdateSources.all,
+    val selectedSourceId: String = UpdateSources.default().id,
     val isChecking: Boolean = false,
+    val isTestingSource: Boolean = false,
+    val isFunctionalChecking: Boolean = false,
     val status: String = "Pret.",
+    val debugStatus: String = "Aucun test execute.",
+    val functionalCheckStatus: String = "Aucun check fonctionnel execute.",
     val releaseTag: String? = null,
     val candidates: List<CandidateUi> = emptyList()
 )
@@ -47,7 +51,7 @@ sealed interface UiEvent {
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val prefs = AppPreferences(application)
-    private val repository = GitHubReleaseRepository(application)
+    private val updateService = UpdateService(application)
     private val installer = ApkInstaller(application)
 
     private val _uiState = MutableStateFlow(MainUiState())
@@ -59,53 +63,36 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val pendingReinstallPathByPackage = mutableMapOf<String, String>()
 
     init {
-        val config = prefs.loadRepoConfig()
+        val sourceId = prefs.getSelectedSourceId()
+        val resolved = UpdateSources.findById(sourceId) ?: UpdateSources.default()
         _uiState.update {
-            it.copy(
-                owner = config.owner,
-                repo = config.repo,
-                token = config.token.orEmpty()
-            )
+            it.copy(selectedSourceId = resolved.id)
         }
     }
 
-    fun onOwnerChanged(value: String) = _uiState.update { it.copy(owner = value) }
-    fun onRepoChanged(value: String) = _uiState.update { it.copy(repo = value) }
-    fun onTokenChanged(value: String) = _uiState.update { it.copy(token = value) }
+    fun onSourceSelected(sourceId: String) {
+        val resolved = UpdateSources.findById(sourceId) ?: return
+        _uiState.update { it.copy(selectedSourceId = resolved.id) }
+    }
 
     fun saveConfig() {
-        val state = _uiState.value
-        prefs.saveRepoConfig(
-            RepoConfig(
-                owner = state.owner,
-                repo = state.repo,
-                token = state.token.ifBlank { null }
-            )
-        )
-        _uiState.update { it.copy(status = "Configuration GitHub enregistree.") }
+        val sourceId = _uiState.value.selectedSourceId
+        prefs.setSelectedSourceId(sourceId)
+        _uiState.update {
+            it.copy(status = "Source enregistree: ${selectedSource().displayName}")
+        }
     }
 
     fun checkUpdates() {
         if (_uiState.value.isChecking) return
         viewModelScope.launch {
-            val state = _uiState.value
-            val config = RepoConfig(
-                owner = state.owner.trim(),
-                repo = state.repo.trim(),
-                token = state.token.trim().ifBlank { null }
-            )
-            if (config.owner.isBlank() || config.repo.isBlank()) {
-                _uiState.update {
-                    it.copy(status = "Renseigne owner/repo GitHub avant de verifier.")
-                }
-                return@launch
-            }
+            val source = selectedSource()
             _uiState.update { it.copy(isChecking = true, status = "Verification des mises a jour...") }
             runCatching {
-                repository.checkForUpdates(config, prefs.getLastSeenTag())
+                updateService.checkForUpdates(source, prefs.getLastSeenTag(source.id))
             }.onSuccess { result ->
                 if (result.isNewRelease) {
-                    prefs.setLastSeenTag(result.release.tagName)
+                    prefs.setLastSeenTag(source.id, result.release.tagName)
                 }
                 val candidates = result.candidates.map { candidate ->
                     CandidateUi(
@@ -144,6 +131,90 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     it.copy(
                         isChecking = false,
                         status = "Echec check update: ${error.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    fun testSourceConnection() {
+        if (_uiState.value.isTestingSource) return
+        viewModelScope.launch {
+            val source = selectedSource()
+            _uiState.update { it.copy(isTestingSource = true, debugStatus = "Test en cours...") }
+            runCatching {
+                updateService.testConnection(source)
+            }.onSuccess { info ->
+                _uiState.update {
+                    it.copy(
+                        isTestingSource = false,
+                        debugStatus = info
+                    )
+                }
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        isTestingSource = false,
+                        debugStatus = "Test KO: ${error.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    fun runFunctionalAppCheck() {
+        if (_uiState.value.isFunctionalChecking) return
+        viewModelScope.launch {
+            val source = selectedSource()
+            _uiState.update {
+                it.copy(
+                    isFunctionalChecking = true,
+                    functionalCheckStatus = "Check fonctionnel en cours..."
+                )
+            }
+            runCatching {
+                val connectivity = updateService.testConnection(source)
+                val result = updateService.checkForUpdates(source, prefs.getLastSeenTag(source.id))
+                Triple(connectivity, result.release.tagName, result.candidates)
+            }.onSuccess { (connectivity, tag, candidatesRaw) ->
+                val candidates = candidatesRaw.map { candidate ->
+                    CandidateUi(
+                        assetName = candidate.asset.name,
+                        packageName = candidate.packageName,
+                        localPath = candidate.localFile.absolutePath,
+                        action = candidate.action,
+                        installedVersionCode = candidate.installedVersionCode,
+                        archiveVersionCode = candidate.archiveVersionCode
+                    )
+                }
+                val actionable = candidates.count {
+                    it.action == UpdateAction.INSTALL || it.action == UpdateAction.UPDATE
+                }
+                val parsedPackages = candidates.count { !it.packageName.isNullOrBlank() }
+                _uiState.update {
+                    it.copy(
+                        isFunctionalChecking = false,
+                        releaseTag = tag,
+                        candidates = candidates,
+                        functionalCheckStatus = buildString {
+                            append("OK | ")
+                            append(connectivity)
+                            append(" | release=")
+                            append(tag)
+                            append(" | apk=")
+                            append(candidates.size)
+                            append(" | actionnables=")
+                            append(actionable)
+                            append(" | packages_detectes=")
+                            append(parsedPackages)
+                        }
+                    )
+                }
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        isFunctionalChecking = false,
+                        functionalCheckStatus = "Check fonctionnel KO: ${error.message}"
                     )
                 }
             }
@@ -232,6 +303,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
         }
+    }
+
+    private fun selectedSource(): UpdateSource {
+        val id = _uiState.value.selectedSourceId
+        return UpdateSources.findById(id) ?: UpdateSources.default()
     }
 
     private fun isPackageInstalled(packageName: String): Boolean {

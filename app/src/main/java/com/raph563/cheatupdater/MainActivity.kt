@@ -19,7 +19,6 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -27,13 +26,19 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -103,14 +108,14 @@ class MainActivity : ComponentActivity() {
             MaterialTheme {
                 CheatUpdaterScreen(
                     state = state,
-                    onOwnerChanged = viewModel::onOwnerChanged,
-                    onRepoChanged = viewModel::onRepoChanged,
-                    onTokenChanged = viewModel::onTokenChanged,
+                    onSourceSelected = viewModel::onSourceSelected,
                     onSaveConfig = viewModel::saveConfig,
                     onCheckUpdates = {
                         WorkScheduler.enqueueOneTimeCheck(this)
                         viewModel.checkUpdates()
                     },
+                    onTestSource = viewModel::testSourceConnection,
+                    onRunFunctionalCheck = viewModel::runFunctionalAppCheck,
                     onStartPersistentService = { UpdaterForegroundService.start(this) },
                     onRequestNotificationPermission = ::requestNotificationsPermission,
                     onRequestBatteryOptimizationExemption = ::requestBatteryOptimizationExemption,
@@ -200,14 +205,15 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun CheatUpdaterScreen(
     state: MainUiState,
-    onOwnerChanged: (String) -> Unit,
-    onRepoChanged: (String) -> Unit,
-    onTokenChanged: (String) -> Unit,
+    onSourceSelected: (String) -> Unit,
     onSaveConfig: () -> Unit,
     onCheckUpdates: () -> Unit,
+    onTestSource: () -> Unit,
+    onRunFunctionalCheck: () -> Unit,
     onStartPersistentService: () -> Unit,
     onRequestNotificationPermission: () -> Unit,
     onRequestBatteryOptimizationExemption: () -> Unit,
@@ -215,6 +221,9 @@ private fun CheatUpdaterScreen(
     onOpenInstallUnknownAppsSettings: () -> Unit,
     onInstallCandidate: (CandidateUi) -> Unit
 ) {
+    val selectedSource = state.availableSources.firstOrNull { it.id == state.selectedSourceId }
+    var sourceExpanded by remember { mutableStateOf(false) }
+
     Scaffold(modifier = Modifier.fillMaxSize()) { padding ->
         LazyColumn(
             modifier = Modifier
@@ -233,29 +242,73 @@ private fun CheatUpdaterScreen(
 
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = state.owner,
-                        onValueChange = onOwnerChanged,
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("GitHub Owner") }
-                    )
-                    OutlinedTextField(
-                        value = state.repo,
-                        onValueChange = onRepoChanged,
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("GitHub Repo") }
-                    )
-                    OutlinedTextField(
-                        value = state.token,
-                        onValueChange = onTokenChanged,
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Token (optionnel)") }
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = onSaveConfig) { Text("Sauver config") }
-                        Button(onClick = onCheckUpdates, enabled = !state.isChecking) {
-                            Text(if (state.isChecking) "Checking..." else "Check mises a jour")
+                    Text("Source des mises a jour")
+                    ExposedDropdownMenuBox(
+                        expanded = sourceExpanded,
+                        onExpandedChange = { sourceExpanded = !sourceExpanded }
+                    ) {
+                        OutlinedTextField(
+                            modifier = Modifier
+                                .menuAnchor()
+                                .fillMaxWidth(),
+                            readOnly = true,
+                            value = selectedSource?.displayName ?: "Source inconnue",
+                            onValueChange = {},
+                            label = { Text("Source preconfiguree") },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = sourceExpanded)
+                            }
+                        )
+                        ExposedDropdownMenu(
+                            expanded = sourceExpanded,
+                            onDismissRequest = { sourceExpanded = false }
+                        ) {
+                            state.availableSources.forEach { source ->
+                                DropdownMenuItem(
+                                    text = { Text(source.displayName) },
+                                    onClick = {
+                                        sourceExpanded = false
+                                        onSourceSelected(source.id)
+                                    }
+                                )
+                            }
                         }
+                    }
+                    Button(onClick = onSaveConfig, modifier = Modifier.fillMaxWidth()) {
+                        Text("Sauver source")
+                    }
+                    Button(onClick = onCheckUpdates, enabled = !state.isChecking, modifier = Modifier.fillMaxWidth()) {
+                        Text(if (state.isChecking) "Checking..." else "Check mises a jour")
+                    }
+                }
+            }
+
+            item { HorizontalDivider() }
+
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Debug")
+                    Text(state.debugStatus)
+                    Button(
+                        onClick = onTestSource,
+                        enabled = !state.isTestingSource,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(if (state.isTestingSource) "Test en cours..." else "Tester connexion depot")
+                    }
+                    Text(state.functionalCheckStatus)
+                    Button(
+                        onClick = onRunFunctionalCheck,
+                        enabled = !state.isFunctionalChecking,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            if (state.isFunctionalChecking) {
+                                "Check fonctionnel en cours..."
+                            } else {
+                                "Check application fonctionnel"
+                            }
+                        )
                     }
                 }
             }
