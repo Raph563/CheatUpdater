@@ -13,6 +13,7 @@ import com.raph563.cheatupdater.data.UpdateAction
 import com.raph563.cheatupdater.data.UpdateCheckResult
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import retrofit2.Retrofit
 import retrofit2.HttpException
 import retrofit2.converter.moshi.MoshiConverterFactory
@@ -26,6 +27,7 @@ class BackendReleaseRepository(
 ) {
     private val packageManager: PackageManager = context.packageManager
     private val normalizedBaseUrl = if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"
+    private val sourceBaseUrl = normalizedBaseUrl.toHttpUrlOrNull()
 
     private val client = OkHttpClient.Builder()
         .addInterceptor { chain ->
@@ -76,16 +78,17 @@ class BackendReleaseRepository(
         }
 
         val candidates = backendRelease.apps.map { app ->
+            val resolvedDownloadUrl = resolveDownloadUrl(app.downloadUrl)
             val localFile = File(releaseFolder, app.fileName)
             if (!localFile.exists() || (app.size != null && localFile.length() != app.size)) {
-                download(app.downloadUrl, localFile)
+                download(resolvedDownloadUrl, localFile)
             }
             buildCandidate(
                 asset = GitHubAsset(
                     id = localFile.hashCode().toLong(),
                     name = app.fileName,
                     size = app.size ?: localFile.length(),
-                    browserDownloadUrl = app.downloadUrl
+                    browserDownloadUrl = resolvedDownloadUrl
                 ),
                 localFile = localFile
             )
@@ -175,6 +178,20 @@ class BackendReleaseRepository(
 
     private fun sanitize(value: String): String =
         value.lowercase(Locale.US).replace(Regex("[^a-zA-Z0-9._-]"), "_")
+
+    private fun resolveDownloadUrl(url: String): String {
+        val appUrl = url.toHttpUrlOrNull() ?: return url
+        val base = sourceBaseUrl ?: return url
+        val host = appUrl.host.lowercase(Locale.US)
+        val isLoopback = host == "localhost" || host == "127.0.0.1" || host == "::1"
+        if (!isLoopback) return url
+        return appUrl.newBuilder()
+            .scheme(base.scheme)
+            .host(base.host)
+            .port(base.port)
+            .build()
+            .toString()
+    }
 
     @Suppress("DEPRECATION")
     private fun PackageInfo.longVersionCodeSafe(): Long =
