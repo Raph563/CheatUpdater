@@ -90,7 +90,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         NotificationHelper.createChannels(this)
         WorkScheduler.scheduleDailyNoonCheck(this)
-        WorkScheduler.enqueueOneTimeCheck(this)
         UpdaterForegroundService.start(this)
 
         lifecycleScope.launch {
@@ -111,7 +110,6 @@ class MainActivity : ComponentActivity() {
                     onSourceSelected = viewModel::onSourceSelected,
                     onSaveConfig = viewModel::saveConfig,
                     onCheckUpdates = {
-                        WorkScheduler.enqueueOneTimeCheck(this)
                         viewModel.checkUpdates()
                     },
                     onTestSource = viewModel::testSourceConnection,

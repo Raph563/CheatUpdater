@@ -17,6 +17,8 @@ import okhttp3.Request
 import retrofit2.HttpException
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
 import java.net.URLDecoder
@@ -66,7 +68,7 @@ class GitHubReleaseRepository(private val context: Context) {
     suspend fun checkForUpdates(
         config: RepoConfig,
         lastSeenTag: String?
-    ): UpdateCheckResult {
+    ): UpdateCheckResult = withContext(Dispatchers.IO) {
         require(config.owner.isNotBlank()) { "Owner GitHub requis." }
         require(config.repo.isNotBlank()) { "Repo GitHub requis." }
 
@@ -89,7 +91,7 @@ class GitHubReleaseRepository(private val context: Context) {
                 buildCandidate(asset, localFile)
             }
 
-        return UpdateCheckResult(
+        UpdateCheckResult(
             release = release,
             candidates = candidates,
             isNewRelease = lastSeenTag == null || lastSeenTag != release.tagName

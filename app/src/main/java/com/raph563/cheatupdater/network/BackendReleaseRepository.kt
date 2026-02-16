@@ -17,6 +17,8 @@ import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import retrofit2.Retrofit
 import retrofit2.HttpException
 import retrofit2.converter.moshi.MoshiConverterFactory
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
 import java.util.Locale
@@ -52,12 +54,12 @@ class BackendReleaseRepository(
             .create(BackendApi::class.java)
     }
 
-    suspend fun checkForUpdates(lastSeenTag: String?): UpdateCheckResult {
+    suspend fun checkForUpdates(lastSeenTag: String?): UpdateCheckResult = withContext(Dispatchers.IO) {
         val backendRelease = try {
             api.getCurrentRelease()
         } catch (http: HttpException) {
             if (http.code() == 404) {
-                return UpdateCheckResult(
+                return@withContext UpdateCheckResult(
                     release = GitHubRelease(
                         id = 0L,
                         tagName = "no-release",
@@ -94,7 +96,7 @@ class BackendReleaseRepository(
             )
         }
 
-        return UpdateCheckResult(
+        UpdateCheckResult(
             release = domainRelease,
             candidates = candidates,
             isNewRelease = lastSeenTag == null || lastSeenTag != domainRelease.tagName
