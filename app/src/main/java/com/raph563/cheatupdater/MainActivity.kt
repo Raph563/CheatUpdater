@@ -233,7 +233,7 @@ private fun CheatUpdaterScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
-                Text("CheatUpdater V1", style = MaterialTheme.typography.headlineSmall)
+                Text("CheatUpdater v${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.headlineSmall)
                 Text("Release: ${state.releaseTag ?: "Aucune"}")
                 Text("Etat: ${state.status}")
             }
