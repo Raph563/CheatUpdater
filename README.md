@@ -64,9 +64,15 @@ Les APK sont conservés en stockage local même après annulation/diffusion.
 
 Sources incluses dans l’app:
 
-1. `GitHub Releases (Raph563/CheatUpdater)`
+1. `GitHub Releases (Raph563/CheatUpdater, anti-403)`
 2. `Backend Docker (local)`
 3. `GitHub Debug (inotia00/rvx-builder)`
+
+Mode anti-403:
+- Si l'API GitHub renvoie `HTTP 403`/`429` (rate limit), l'app bascule automatiquement en fallback Web:
+  - récupération de la release via `https://github.com/<owner>/<repo>/releases/latest`
+  - extraction des assets `.apk` depuis la page release.
+- Ce mode évite de bloquer le check de mise à jour quand l'API GitHub est limitée.
 
 Note:
 

@@ -19,7 +19,7 @@ object UpdateSources {
     val all: List<UpdateSource> = listOf(
         UpdateSource(
             id = "github_cheatupdater",
-            displayName = "GitHub Releases (Raph563/CheatUpdater)",
+            displayName = "GitHub Releases (Raph563/CheatUpdater, anti-403)",
             type = SourceType.GITHUB,
             owner = "Raph563",
             repo = "CheatUpdater"

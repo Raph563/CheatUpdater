@@ -13,18 +13,21 @@ import com.raph563.cheatupdater.data.RepoConfig
 import com.raph563.cheatupdater.data.UpdateAction
 import com.raph563.cheatupdater.data.UpdateCheckResult
 import okhttp3.OkHttpClient
+import okhttp3.Request
 import retrofit2.HttpException
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 import java.io.File
 import java.io.IOException
+import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
 import java.util.Locale
 
 class GitHubReleaseRepository(private val context: Context) {
     private val packageManager: PackageManager = context.packageManager
 
-    private val api: GitHubApi by lazy {
-        val client = OkHttpClient.Builder()
+    private val apiClient: OkHttpClient by lazy {
+        OkHttpClient.Builder()
             .addInterceptor { chain ->
                 val req = chain.request().newBuilder()
                     .header("Accept", "application/vnd.github+json")
@@ -33,14 +36,27 @@ class GitHubReleaseRepository(private val context: Context) {
                 chain.proceed(req)
             }
             .build()
+    }
 
+    private val webClient: OkHttpClient by lazy {
+        OkHttpClient.Builder()
+            .addInterceptor { chain ->
+                val req = chain.request().newBuilder()
+                    .header("User-Agent", "CheatUpdater/1.0")
+                    .build()
+                chain.proceed(req)
+            }
+            .build()
+    }
+
+    private val api: GitHubApi by lazy {
         val moshi = Moshi.Builder()
             .addLast(KotlinJsonAdapterFactory())
             .build()
 
         Retrofit.Builder()
             .baseUrl("https://api.github.com/")
-            .client(client)
+            .client(apiClient)
             .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
             .create(GitHubApi::class.java)
@@ -55,30 +71,7 @@ class GitHubReleaseRepository(private val context: Context) {
 
         val owner = config.owner.trim()
         val repo = config.repo.trim()
-        val auth = config.token.toAuthHeader()
-        val releaseDto = try {
-            api.getLatestRelease(
-                owner = owner,
-                repo = repo,
-                authorization = auth
-            )
-        } catch (http: HttpException) {
-            if (http.code() == 404) {
-                return UpdateCheckResult(
-                    release = GitHubRelease(
-                        id = 0L,
-                        tagName = "no-release",
-                        name = "$owner/$repo",
-                        publishedAt = null,
-                        assets = emptyList()
-                    ),
-                    candidates = emptyList(),
-                    isNewRelease = false
-                )
-            }
-            throw http
-        }
-        val release = releaseDto.toDomain()
+        val release = getLatestRelease(owner, repo, config.token.toAuthHeader())
         val releaseFolder = File(context.filesDir, "apk_cache/${sanitize(release.tagName)}")
         if (!releaseFolder.exists()) {
             releaseFolder.mkdirs()
@@ -88,7 +81,8 @@ class GitHubReleaseRepository(private val context: Context) {
             .filter { it.name.lowercase(Locale.US).endsWith(".apk") }
             .map { asset ->
                 val localFile = File(releaseFolder, asset.name)
-                if (!localFile.exists() || localFile.length() != asset.size) {
+                val hasKnownSize = asset.size > 0
+                if (!localFile.exists() || (hasKnownSize && localFile.length() != asset.size)) {
                     downloadAsset(asset, localFile, config.token.toAuthHeader())
                 }
                 buildCandidate(asset, localFile)
@@ -116,6 +110,10 @@ class GitHubReleaseRepository(private val context: Context) {
             )
             "Connexion GitHub OK: release ${releaseDto.tagName}"
         } catch (http: HttpException) {
+            if (http.code() == 403 || http.code() == 429) {
+                val webRelease = getLatestReleaseFromWeb(owner, repo)
+                return "Connexion GitHub OK (fallback web): release ${webRelease.tagName}"
+            }
             if (http.code() != 404) throw http
             val repository = api.getRepository(
                 owner = owner,
@@ -132,6 +130,95 @@ class GitHubReleaseRepository(private val context: Context) {
                 "Connexion GitHub OK: ${repository.fullName} (dernier tag: $latestTag)"
             }
         }
+    }
+
+    private suspend fun getLatestRelease(owner: String, repo: String, auth: String?): GitHubRelease {
+        val releaseDto = try {
+            api.getLatestRelease(
+                owner = owner,
+                repo = repo,
+                authorization = auth
+            )
+        } catch (http: HttpException) {
+            if (http.code() == 404) {
+                return GitHubRelease(
+                    id = 0L,
+                    tagName = "no-release",
+                    name = "$owner/$repo",
+                    publishedAt = null,
+                    assets = emptyList()
+                )
+            }
+            if (http.code() == 403 || http.code() == 429) {
+                return getLatestReleaseFromWeb(owner, repo)
+            }
+            throw http
+        }
+        return releaseDto.toDomain()
+    }
+
+    private fun getLatestReleaseFromWeb(owner: String, repo: String): GitHubRelease {
+        val latestUrl = "https://github.com/$owner/$repo/releases/latest"
+        val request = Request.Builder()
+            .url(latestUrl)
+            .get()
+            .build()
+        webClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw IOException("Fallback web GitHub KO: HTTP ${response.code}")
+            }
+            val html = response.body?.string().orEmpty()
+            val finalUrl = response.request.url.toString()
+            val tag = extractTag(finalUrl, html, owner, repo) ?: "web-latest"
+            val assets = extractApkAssets(owner, repo, html)
+            return GitHubRelease(
+                id = finalUrl.hashCode().toLong(),
+                tagName = tag,
+                name = "$owner/$repo",
+                publishedAt = null,
+                assets = assets
+            )
+        }
+    }
+
+    private fun extractTag(finalUrl: String, html: String, owner: String, repo: String): String? {
+        val fromUrl = Regex("/releases/tag/([^/?#]+)")
+            .find(finalUrl)
+            ?.groupValues
+            ?.getOrNull(1)
+        if (!fromUrl.isNullOrBlank()) {
+            return decodeSegment(fromUrl)
+        }
+        val tagPattern = Regex(
+            "/${Regex.escape(owner)}/${Regex.escape(repo)}/releases/tag/([^\"'<>?#]+)"
+        )
+        val fromHtml = tagPattern.find(html)?.groupValues?.getOrNull(1)
+        return fromHtml?.let { decodeSegment(it) }
+    }
+
+    private fun extractApkAssets(owner: String, repo: String, html: String): List<GitHubAsset> {
+        val escapedOwner = Regex.escape(owner)
+        val escapedRepo = Regex.escape(repo)
+        val pattern = Regex(
+            "/$escapedOwner/$escapedRepo/releases/download/([^\"'<>?#]+)/([^\"'<>?#]+\\.apk)"
+        )
+        val dedup = linkedMapOf<String, GitHubAsset>()
+        var id = 1L
+        pattern.findAll(html).forEach { match ->
+            val rawTag = match.groupValues[1]
+            val rawFileName = match.groupValues[2]
+            val fileName = decodeSegment(rawFileName)
+            val downloadUrl = "https://github.com/$owner/$repo/releases/download/$rawTag/$rawFileName"
+            if (!dedup.containsKey(fileName)) {
+                dedup[fileName] = GitHubAsset(
+                    id = id++,
+                    name = fileName,
+                    size = -1L,
+                    browserDownloadUrl = downloadUrl
+                )
+            }
+        }
+        return dedup.values.toList()
     }
 
     private fun buildCandidate(asset: GitHubAsset, localFile: File): ApkCandidate {
@@ -204,6 +291,9 @@ class GitHubReleaseRepository(private val context: Context) {
         if (this.isNullOrBlank()) return null
         return "Bearer ${this.trim()}"
     }
+
+    private fun decodeSegment(value: String): String =
+        URLDecoder.decode(value, StandardCharsets.UTF_8.name())
 
     private fun sanitize(value: String): String =
         value.replace(Regex("[^a-zA-Z0-9._-]"), "_")
