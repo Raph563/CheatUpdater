@@ -20,6 +20,7 @@ import retrofit2.converter.moshi.MoshiConverterFactory
 import java.io.File
 import java.io.IOException
 import java.net.URLDecoder
+import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.util.Locale
 
@@ -170,7 +171,12 @@ class GitHubReleaseRepository(private val context: Context) {
             val html = response.body?.string().orEmpty()
             val finalUrl = response.request.url.toString()
             val tag = extractTag(finalUrl, html, owner, repo) ?: "web-latest"
-            val assets = extractApkAssets(owner, repo, html)
+            val directAssets = extractApkAssets(owner, repo, html)
+            val assets = if (directAssets.isNotEmpty()) {
+                directAssets
+            } else {
+                fetchApkAssetsFromExpanded(owner, repo, tag)
+            }
             return GitHubRelease(
                 id = finalUrl.hashCode().toLong(),
                 tagName = tag,
@@ -178,6 +184,22 @@ class GitHubReleaseRepository(private val context: Context) {
                 publishedAt = null,
                 assets = assets
             )
+        }
+    }
+
+    private fun fetchApkAssetsFromExpanded(owner: String, repo: String, tag: String): List<GitHubAsset> {
+        val encodedTag = URLEncoder.encode(tag, StandardCharsets.UTF_8.name()).replace("+", "%20")
+        val assetsUrl = "https://github.com/$owner/$repo/releases/expanded_assets/$encodedTag"
+        val request = Request.Builder()
+            .url(assetsUrl)
+            .get()
+            .build()
+        webClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw IOException("Fallback web assets KO: HTTP ${response.code}")
+            }
+            val html = response.body?.string().orEmpty()
+            return extractApkAssets(owner, repo, html)
         }
     }
 
