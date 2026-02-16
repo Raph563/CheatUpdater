@@ -1,0 +1,8 @@
+<resources>
+    <color name="primary">#003049</color>
+    <color name="onPrimary">#FFFFFF</color>
+    <color name="secondary">#D62828</color>
+    <color name="onSecondary">#FFFFFF</color>
+    <color name="background">#FDF0D5</color>
+    <color name="onBackground">#1F2933</color>
+</resources>

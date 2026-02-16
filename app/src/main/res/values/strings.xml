@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">CheatUpdater</string>
+    <string name="notif_channel_persistent_name">Surveillance active</string>
+    <string name="notif_channel_persistent_desc">Notification persistante pour garder le service actif.</string>
+    <string name="notif_channel_updates_name">Mises a jour</string>
+    <string name="notif_channel_updates_desc">Alertes quand des APK sont disponibles.</string>
+    <string name="notif_channel_critical_name">Mise a jour obligatoire</string>
+    <string name="notif_channel_critical_desc">Alerte forcee de mise a jour.</string>
+</resources>
