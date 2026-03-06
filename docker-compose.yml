@@ -1,4 +1,15 @@
 services:
+  cheatupdater-db:
+    container_name: cheatupdater-db
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=cheatupdater
+      - POSTGRES_USER=cheatupdater
+      - POSTGRES_PASSWORD=cheatupdater
+    volumes:
+      - cheatupdater_pgdata:/var/lib/postgresql/data
+
   rvx-builder:
     container_name: rvx-builder
     build:
@@ -10,6 +21,34 @@ services:
     volumes:
       - ./rvx_data:/app/rvx-builder/revanced
 
+  cheatupdater-migrations:
+    container_name: cheatupdater-migrations
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    depends_on:
+      - cheatupdater-db
+    environment:
+      - DATA_DIR=/data
+      - DATABASE_URL=postgresql+psycopg2://cheatupdater:cheatupdater@cheatupdater-db:5432/cheatupdater
+      - RVX_WS_URL=ws://rvx-builder:8000
+      - RVX_REVANCED_DIR=/srv/rvx/revanced
+      - PUBLIC_BASE_URL=http://localhost:8088
+      - APP_PUBLIC_BASE_URL=http://localhost:8088
+      - JWT_SECRET=change-me-jwt-secret
+      - REFRESH_SECRET=change-me-refresh-secret
+      - ADMIN_SEED_EMAIL=admin@cheatupdater.local
+      - ADMIN_SEED_PASSWORD=ChangeThisAdminPassword!
+      - ALLOW_LEGACY_PUBLIC=true
+      - MIGRATE_LEGACY_STATE_ON_START=true
+      - TELEGRAM_MODE=bot
+      - TELEGRAM_BOT_TOKEN=
+      - TELEGRAM_CHAT_ID=
+    volumes:
+      - ./backend_data:/data
+      - ./rvx_data:/srv/rvx/revanced
+    command: ["python", "-m", "scripts.migrate_json_state"]
+
   cheatupdater-backend:
     container_name: cheatupdater-backend
     build:
@@ -17,14 +56,30 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     depends_on:
+      - cheatupdater-db
       - rvx-builder
+      - cheatupdater-migrations
     environment:
       - DATA_DIR=/data
+      - DATABASE_URL=postgresql+psycopg2://cheatupdater:cheatupdater@cheatupdater-db:5432/cheatupdater
       - RVX_WS_URL=ws://rvx-builder:8000
       - RVX_REVANCED_DIR=/srv/rvx/revanced
       - PUBLIC_BASE_URL=http://localhost:8088
+      - APP_PUBLIC_BASE_URL=http://localhost:8088
+      - JWT_SECRET=change-me-jwt-secret
+      - REFRESH_SECRET=change-me-refresh-secret
+      - ADMIN_SEED_EMAIL=admin@cheatupdater.local
+      - ADMIN_SEED_PASSWORD=ChangeThisAdminPassword!
+      - ALLOW_LEGACY_PUBLIC=true
+      - MIGRATE_LEGACY_STATE_ON_START=true
+      - TELEGRAM_MODE=bot
+      - TELEGRAM_BOT_TOKEN=
+      - TELEGRAM_CHAT_ID=
     ports:
       - "8088:8088"
     volumes:
       - ./backend_data:/data
       - ./rvx_data:/srv/rvx/revanced
+
+volumes:
+  cheatupdater_pgdata:
