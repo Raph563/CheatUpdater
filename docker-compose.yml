@@ -45,7 +45,7 @@ services:
       - APP_PUBLIC_BASE_URL=http://localhost:8088
       - JWT_SECRET=change-me-jwt-secret
       - REFRESH_SECRET=change-me-refresh-secret
-      - ADMIN_SEED_EMAIL=admin@cheatupdater.local
+      - ADMIN_SEED_EMAIL=admin@cheatupdater.app
       - ADMIN_SEED_PASSWORD=ChangeThisAdminPassword!
       - ALLOW_LEGACY_PUBLIC=true
       - MIGRATE_LEGACY_STATE_ON_START=true
@@ -79,7 +79,7 @@ services:
       - APP_PUBLIC_BASE_URL=http://localhost:8088
       - JWT_SECRET=change-me-jwt-secret
       - REFRESH_SECRET=change-me-refresh-secret
-      - ADMIN_SEED_EMAIL=admin@cheatupdater.local
+      - ADMIN_SEED_EMAIL=admin@cheatupdater.app
       - ADMIN_SEED_PASSWORD=ChangeThisAdminPassword!
       - ALLOW_LEGACY_PUBLIC=true
       - MIGRATE_LEGACY_STATE_ON_START=true

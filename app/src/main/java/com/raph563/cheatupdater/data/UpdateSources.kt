@@ -18,34 +18,26 @@ data class UpdateSource(
 object UpdateSources {
     val all: List<UpdateSource> = listOf(
         UpdateSource(
-            id = "github_cheatupdater",
-            displayName = "GitHub Releases (Raph563/CheatUpdater, anti-403)",
-            type = SourceType.GITHUB,
-            owner = "Raph563",
-            repo = "CheatUpdater"
+            id = "backend_prod",
+            displayName = "Backend CheatUpdater V2 (VPS)",
+            type = SourceType.BACKEND,
+            backendBaseUrl = "http://207.180.235.68:8088/"
         ),
         UpdateSource(
             id = "backend_main",
-            displayName = "Backend Docker (local)",
+            displayName = "Backend CheatUpdater V2 (local)",
             type = SourceType.BACKEND,
             backendBaseUrl = "http://10.0.2.2:8088/"
         ),
         UpdateSource(
             id = "backend_lan",
-            displayName = "Backend Docker (LAN Wi-Fi)",
+            displayName = "Backend CheatUpdater V2 (LAN Wi-Fi)",
             type = SourceType.BACKEND,
             backendBaseUrl = "http://192.168.0.56:8088/"
-        ),
-        UpdateSource(
-            id = "github_debug",
-            displayName = "GitHub Debug (inotia00/rvx-builder)",
-            type = SourceType.GITHUB,
-            owner = "inotia00",
-            repo = "rvx-builder"
         )
     )
 
-    fun default(): UpdateSource = findById("github_cheatupdater") ?: all.first()
+    fun default(): UpdateSource = findById("backend_prod") ?: all.first()
 
     fun findById(id: String?): UpdateSource? =
         all.firstOrNull { it.id == id }
