@@ -26,6 +26,7 @@ data class GitHubRelease(
 enum class UpdateAction {
     INSTALL,
     UPDATE,
+    REINSTALL,
     UP_TO_DATE
 }
 
@@ -35,7 +36,10 @@ data class ApkCandidate(
     val packageName: String?,
     val archiveVersionCode: Long?,
     val installedVersionCode: Long?,
-    val action: UpdateAction
+    val action: UpdateAction,
+    val artifactId: String? = null,
+    val releaseId: String? = null,
+    val reason: String? = null
 )
 
 data class UpdateCheckResult(

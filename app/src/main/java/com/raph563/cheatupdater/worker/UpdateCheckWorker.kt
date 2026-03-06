@@ -16,6 +16,9 @@ class UpdateCheckWorker(
 
     override suspend fun doWork(): Result {
         val prefs = AppPreferences(applicationContext)
+        if (prefs.getAccessToken().isNullOrBlank()) {
+            return Result.success()
+        }
         val sourceId = prefs.getSelectedSourceId()
         val source = UpdateSources.findById(sourceId) ?: UpdateSources.default()
 
@@ -26,7 +29,7 @@ class UpdateCheckWorker(
                 prefs.setLastSeenTag(source.id, result.release.tagName)
             }
             val actionable = result.candidates.count {
-                it.action == UpdateAction.INSTALL || it.action == UpdateAction.UPDATE
+                it.action == UpdateAction.INSTALL || it.action == UpdateAction.UPDATE || it.action == UpdateAction.REINSTALL
             }
             if (actionable > 0) {
                 NotificationHelper.showUpdatesAvailable(
