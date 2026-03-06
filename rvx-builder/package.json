@@ -1,0 +1,41 @@
+{
+  "name": "rvx-builder",
+  "version": "1.0.0",
+  "description": "",
+  "bin": "index.js",
+  "main": "index.js",
+  "type": "commonjs",
+  "pkg": {
+    "assets": [
+      "public/**/*"
+    ]
+  },
+  "scripts": {
+    "start": "node .",
+    "fmt": "prettier --write . && eslint --fix ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "app-info-parser": "^1.1.6",
+    "cheerio": "^1.0.0",
+    "express": "^4.21.2",
+    "express-fileupload": "^1.5.1",
+    "fkill": "^7.2.1",
+    "node-fetch": "^2.7.0",
+    "node-fetch-progress": "^1.0.2",
+    "open": "^8.4.2",
+    "portfinder": "^1.0.32",
+    "prettier": "^3.4.2",
+    "semver": "^7.6.0",
+    "tar": "^6.2.1",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.16.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

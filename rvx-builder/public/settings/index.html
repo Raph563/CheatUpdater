@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>Settings</title>
+    <link href="../styles/fontawesome.css" rel="stylesheet" type="text/css" />
+    <link href="../styles/core.css" rel="stylesheet" type="text/css" />
+    <link href="../styles/settings.css" rel="stylesheet" type="text/css" />
+    <script src="../index.js"></script>
+    <script src="../colors.js" defer></script>
+    <script src="../settings.js" defer></script>
+  </head>
+
+  <body>
+    <div id="container">
+      <main>
+        <header>
+          <h1><i aria-hidden="true" class="fa-solid fa-gear"></i>Settings</h1>
+        </header>
+        <div id="content--wrapper">
+          <div id="content">
+            <div class="option">
+              <h3><i class="fa-solid fa-brush"></i>Accent Color</h3>
+              <p>
+                Customize the Accent color of the builder. Use the palette
+                option to use a custom color.
+              </p>
+              <div id="themecolor-picker">
+                <span
+                  style="background: #4873b3 none repeat scroll 0% 0%"
+                ></span>
+                <span
+                  style="background: #df0000bf none repeat scroll 0% 0%"
+                ></span>
+                <span
+                  style="background: #605dbbb3 none repeat scroll 0% 0%"
+                ></span>
+                <span
+                  style="background: #00e60069 none repeat scroll 0% 0%"
+                ></span>
+                <span
+                  style="background: #0067fdc7 none repeat scroll 0% 0%"
+                ></span>
+                <span
+                  onclick="this.style.setProperty('background-color', prompt('Set Custom Color (eg. #004083 or crimson or anything that works with css)', document.documentElement.style.getPropertyValue('--accentColor')));"
+                  style="
+                    background: var(--accentColor) none repeat scroll 0% 0%;
+                  "
+                  >🎨</span
+                >
+              </div>
+            </div>
+
+            <div class="option">
+              <h3>
+                <i class="fa-solid fa-circle-half-stroke"></i>Pure Black Theme
+              </h3>
+              <p>
+                The pure black theme uses a black background and helps reduce
+                battery usage on AMOLED devices or maybe you can just turn it on
+                when the dark theme is not enough.
+              </p>
+              <label class="switch"
+                ><input
+                  class="check"
+                  id="blackBtn"
+                  type="checkbox"
+                  autocomplete="off" /><span class="slider"></span
+              ></label>
+            </div>
+            <div class="option">
+              <h3>
+                <i class="fa-solid fa-circle-chevron-right"></i>Automatically
+                proceed to next page
+              </h3>
+
+              <p>
+                This helps save time by proceeding automatically to the next
+                page on downloading pages. <br /><br />Caution: It may break your back
+                button.
+              </p>
+              <label class="switch"
+                ><input
+                  class="check"
+                  id="autoBtn"
+                  type="checkbox"
+                  autocomplete="off" /><span class="slider"></span
+              ></label>
+            </div>
+            <div class="option">
+              <h3>
+                <i class="fa-solid fa-circle-xmark"></i>Remove unused library
+              </h3>
+
+              <p>
+                Leave only libraries that match the device's architecture.
+                <br /><br />Caution: Available only on Android (termux).
+              </p>
+              <label class="switch"
+                ><input
+                  class="check"
+                  id="ripLibsBtn"
+                  type="checkbox"
+                  autocomplete="off" /><span class="slider"></span
+              ></label>
+            </div>
+
+            <div class="option">
+              <h3>
+                <i class="fa-solid fa-screwdriver-wrench"></i>Show universal patches
+              </h3>
+
+              <p>
+                Display all universal patches.
+              </p>
+              <label class="switch"
+                ><input
+                  class="check"
+                  id="universalPatchesBtn"
+                  type="checkbox"
+                  autocomplete="off" /><span class="slider"></span
+              ></label>
+            </div>
+
+            <div class="option">
+              <h3>
+                <i class="fa-solid fa-screwdriver-wrench"></i>ARSCLib (WIP)
+              </h3>
+
+              <p>
+                Use ARSCLib (WIP).
+                <br /><br />Caution: ARSCLib is still in the development stage, so there may be some features that don't work.
+              </p>
+              <label class="switch"
+                ><input
+                  class="check"
+                  id="ARSCLibBtn"
+                  type="checkbox"
+                  autocomplete="off" /><span class="slider"></span
+              ></label>
+            </div>
+
+            <div class="option">
+              <h3>
+                <i class="fa-solid fa-backward"></i>Reset settings
+              </h3>
+
+              <p>
+                Resets the source and selected patch list.
+                <br /><br />Try this if the patch is excluded even though you included it.
+              </p>
+              <button class="highlighted" onclick="resetSettings();">
+                Reset
+              </button>
+            </div>
+            <div id="src" class="option">
+              <h3><i class="fa-solid fa-server"></i>Sources</h3>
+
+              <p>
+                Configure your custom sources.<br />Eg. GitHub
+                Username/Repository.
+              </p>
+
+              <div id="set-sources">
+                <button id="set-sources-rvx" class="highlighted" onclick="setSourcesRVX();">RVX</button>
+                <button id="set-sources-rvx-dev" class="highlighted" onclick="setSourcesRVXDev();">RVX (dev)</button>
+                <button id="set-sources-rvx-anddea" class="highlighted" onclick="setSourcesRVXAnddea();">RVX (anddea)</button>
+                <button id="set-sources-rvx-anddea-dev" class="highlighted" onclick="setSourcesRVXAnddeaDev();">RVX (anddea dev)</button>
+                <button id="set-sources-revanced" class="highlighted" onclick="setSourcesReVanced();">ReVanced</button>
+                <button id="set-sources-revanced-dev" class="highlighted" onclick="setSourcesReVancedDev();">ReVanced (dev)</button>
+                <button id="set-sources-revanced-patcher-22-dev" class="highlighted" onclick="setSourcesReVancedPatcher22Dev();">ReVanced (patcher22 dev)</button>
+                <button id="set-sources-piko" class="highlighted" onclick="setSourcesPiko();">Piko</button>
+                <button id="set-sources-piko-dev" class="highlighted" onclick="setSourcesPikoDev();">Piko (dev)</button>
+                <button id="set-sources-rvx-arsclib" class="highlighted" onclick="setSourcesRVXARSCLib();"></button>
+                <button id="set-sources-update" class="highlighted" onclick="setSources();"></button>
+              </div>
+
+              <div>
+                <h3>Cli Organization</h3>
+                <input id="cli-org" class="searchBox" />
+                <h3>Cli Source</h3>
+                <input id="cli-src" class="searchBox" />
+              </div>
+
+              <div>
+                <h3>Use Cli 4</h3>
+                <input id="cli4" class="searchBox" />
+              </div>
+
+              <div>
+                <h3>Use Pre-release</h3>
+                <input id="pre-releases" class="searchBox" />
+              </div>
+
+              <div>
+                <h3>Patches Organization</h3>
+                <input id="patch-org" class="searchBox" />
+                <h3>Patches Source</h3>
+                <input id="patch-src" class="searchBox" />
+              </div>
+
+              <input id="integrations-org" />
+              <input id="integrations-src" />
+
+              <div>
+                <h3>MicroG Organization</h3>
+                <input id="microg-org" class="searchBox" />
+                <h3>MicroG Source</h3>
+                <input id="microg-src" class="searchBox" />
+              </div>
+
+              <button class="highlighted" onclick="setSources();">
+                Set Sources
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
+      <footer>
+        <a
+          href="https://github.com/inotia00/rvx-builder"
+          target="_blank"
+          aria-label="ReVanced Extended Builder on GitHub"
+          title="ReVanced Extended Builder on GitHub"
+          ><i
+            aria-hidden="true"
+            class="social-icon fa-brands fa-xl fa-github"
+          ></i
+        ></a>
+        <a
+          href="/about"
+          aria-label="About ReVanced Extended Builder"
+          title="About ReVanced Extended Builder"
+          ><i
+            aria-hidden="true"
+            class="social-icon fa-solid fa-xl fa-question-circle"
+          ></i
+        ></a>
+        <span class="right"></span>
+        <button onclick="location.href='/'">Home</button>
+      </footer>
+    </div>
+  </body>
+  <script>
+    ws.onopen = () => {
+      sendCommand({ event: 'getSettings' });
+    };
+  </script>
+</html>

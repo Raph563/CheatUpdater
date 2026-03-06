@@ -14,3 +14,6 @@ rvx_data/
 _tmp_rvx_builder/
 backend/__pycache__/
 backend/app/__pycache__/
+
+**/__pycache__/
+*.pyc
