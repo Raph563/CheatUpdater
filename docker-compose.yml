@@ -7,6 +7,12 @@ services:
       - POSTGRES_DB=cheatupdater
       - POSTGRES_USER=cheatupdater
       - POSTGRES_PASSWORD=cheatupdater
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cheatupdater -d cheatupdater"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
     volumes:
       - cheatupdater_pgdata:/var/lib/postgresql/data
 
@@ -26,8 +32,10 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    restart: on-failure
     depends_on:
-      - cheatupdater-db
+      cheatupdater-db:
+        condition: service_healthy
     environment:
       - DATA_DIR=/data
       - DATABASE_URL=postgresql+psycopg2://cheatupdater:cheatupdater@cheatupdater-db:5432/cheatupdater
@@ -56,9 +64,12 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     depends_on:
-      - cheatupdater-db
-      - rvx-builder
-      - cheatupdater-migrations
+      cheatupdater-db:
+        condition: service_healthy
+      rvx-builder:
+        condition: service_started
+      cheatupdater-migrations:
+        condition: service_completed_successfully
     environment:
       - DATA_DIR=/data
       - DATABASE_URL=postgresql+psycopg2://cheatupdater:cheatupdater@cheatupdater-db:5432/cheatupdater
